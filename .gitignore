@@ -15,6 +15,7 @@
 .idea
 
 # Output files
+data
 *.gz
 *.csv
 *.tsv
