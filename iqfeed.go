@@ -24,8 +24,11 @@ const (
 	endMessage           = "!ENDMSG!"
 	maxDataPoints string = "3"
 	csvSeparator  string = ","
-	bufferSize           = 4*1024*1024
+	tsvSeparator  string = "\t"
+	bufferSize           = 4 * 1024 * 1024
 )
+
+type DownloadFunc func(string, *Config)
 
 var (
 	previousRequestId int64 = 0
@@ -51,7 +54,6 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 		return
 	}
 	defer conn.Close()
-
 
 	// Set protocol
 	_, err = fmt.Fprintf(conn, "S,SET PROTOCOL,5.1\r\n")
@@ -97,13 +99,16 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 		pipe = gzip.NewWriter(of)
 	}
 
-	writer := bufio.NewWriterSize(pipe, 4*1024*1024)
-	reader := csv.NewReader(bufio.NewReaderSize(conn, 4*1024*1024))
+	writer := bufio.NewWriterSize(pipe, bufferSize)
+	reader := csv.NewReader(bufio.NewReaderSize(conn, bufferSize))
 	reader.FieldsPerRecord = -1
 	defer pipe.Close()
 
 	// Write header
-	header := strings.Replace(csvHeader, csvSeparator, config.separator, -1)
+	header := csvHeader
+	if config.tsv {
+		header = strings.Replace(csvHeader, csvSeparator, tsvSeparator, -1)
+	}
 	_, err = fmt.Fprintln(writer, header)
 
 	if err != nil {
@@ -155,8 +160,8 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 			return
 		}
 
-		if config.separator != csvSeparator {
-			outputRow = strings.Replace(outputRow, csvSeparator, config.separator, -1)
+		if config.tsv {
+			outputRow = strings.Replace(outputRow, csvSeparator, tsvSeparator, -1)
 		}
 
 		_, err = fmt.Fprintln(writer, outputRow)
@@ -186,12 +191,10 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 func getFilename(symbol string, config *Config) string {
 	filename := symbol
 
-	if config.separator == "," {
-		filename = fmt.Sprintf("%s.csv", filename)
-	} else if config.separator == "\t" {
+	if config.tsv {
 		filename = fmt.Sprintf("%s.tsv", filename)
 	} else {
-		filename = fmt.Sprintf("%s.txt", filename)
+		filename = fmt.Sprintf("%s.csv", filename)
 	}
 
 	if config.gzip {
