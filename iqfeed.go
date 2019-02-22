@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	nextRequestId int64 = 1
+	previousRequestId int64 = 0
 )
 
 func DownloadTicks(symbol string, config *Config) {
@@ -62,7 +62,7 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 	}
 
 	// Send request
-	requestId := fmt.Sprintf("%d", atomic.AddInt64(&nextRequestId, 1))
+	requestId := fmt.Sprintf("%d", atomic.AddInt64(&previousRequestId, 1))
 
 	// Ticks
 	// HTT,[Symbol],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
