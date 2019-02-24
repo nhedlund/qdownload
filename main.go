@@ -15,6 +15,8 @@ import (
 
 type Config struct {
 	command      string
+	startDate    string
+	endDate      string
 	outDirectory string
 	parallelism  int
 	tsv          bool
@@ -25,6 +27,8 @@ type Config struct {
 var (
 	config = Config{
 		command:      "tick",
+		startDate:    "",
+		endDate:      "",
 		outDirectory: "data",
 		parallelism:  8,
 		tsv:          false,
@@ -42,6 +46,18 @@ func main() {
 	app.ArgsUsage = "<symbols or symbols file>"
 
 	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "start, s",
+			Value:       "",
+			Usage:       "start date filter: yyyymmdd",
+			Destination: &config.startDate,
+		},
+		cli.StringFlag{
+			Name:        "end, e",
+			Value:       "",
+			Usage:       "end date filter: yyyymmdd",
+			Destination: &config.endDate,
+		},
 		cli.StringFlag{
 			Name:        "out, o",
 			Value:       "data",

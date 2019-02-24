@@ -19,13 +19,12 @@ import (
 type rowMapper func(iqfeedRow []string) (outputRow string, err error)
 
 const (
-	errorMessage         = "E"
-	stateMessage         = "S"
-	endMessage           = "!ENDMSG!"
-	maxDataPoints string = "3"
-	csvSeparator  string = ","
-	tsvSeparator  string = "\t"
-	bufferSize           = 4 * 1024 * 1024
+	errorMessage        = "E"
+	stateMessage        = "S"
+	endMessage          = "!ENDMSG!"
+	csvSeparator string = ","
+	tsvSeparator string = "\t"
+	bufferSize          = 4 * 1024 * 1024
 )
 
 type DownloadFunc func(string, *Config)
@@ -80,7 +79,7 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 
 	// Ticks
 	// HTT,[Symbol],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
-	request := fmt.Sprintf("HTT,%s,,,%s,,,1,%s", strings.ToUpper(symbol), maxDataPoints, requestId)
+	request := fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
 
 	// Minute bars (with timestamp as bar end)
 	// HID,[Symbol],[Interval],[Days],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
