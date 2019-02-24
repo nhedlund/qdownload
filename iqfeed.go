@@ -40,10 +40,22 @@ func DownloadTicks(symbol string, config *Config) {
 }
 
 func download(symbol string, rowMapper rowMapper, csvHeader string, config *Config) {
+	successful := false
+
 	// Setup log context
 	ctx := log.WithFields(log.Fields{
 		"symbol": strings.ToUpper(symbol),
 	})
+
+	// Get output filename
+	filename := getFilename(symbol, config)
+	path := filepath.Join(config.outDirectory, filename)
+
+	// Check if output file already exists
+	if fileExists(path) {
+		ctx.Info("Already downloaded")
+		return
+	}
 
 	// Connect to IQFeed Historical socket
 	started := millisecondsTimestamp()
@@ -84,8 +96,6 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 	ctx.Info("Downloading")
 
 	// Setup write pipeline
-	filename := getFilename(symbol, config)
-	path := filepath.Join(config.outDirectory, filename)
 	of, err := os.Create(path)
 
 	if err != nil {
@@ -102,7 +112,22 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 	writer := bufio.NewWriterSize(pipe, bufferSize)
 	reader := csv.NewReader(bufio.NewReaderSize(conn, bufferSize))
 	reader.FieldsPerRecord = -1
-	defer pipe.Close()
+
+	// Defer closing output file and removing the file if an error occurred
+	defer func() {
+		err = pipe.Close()
+
+		if err != nil {
+			ctx.WithError(err).Error("Close output file error")
+		}
+
+		if !successful && fileExists(path) {
+			err = os.Remove(path)
+			if err != nil {
+				ctx.WithError(err).Error("Delete unsuccessful download output file error")
+			}
+		}
+	}()
 
 	// Write header
 	header := csvHeader
@@ -180,6 +205,7 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 		ctx.WithError(err).Error("Flush output file error")
 	}
 
+	successful = true
 	duration := millisecondsTimestamp() - started
 
 	ctx.WithFields(log.Fields{
