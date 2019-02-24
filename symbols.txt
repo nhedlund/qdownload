@@ -1,0 +1,10 @@
+fb
+amzn
+aapl
+nflx
+goog
+spy
+gld
+slv
+uso
+farm
