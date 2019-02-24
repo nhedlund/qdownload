@@ -7,6 +7,7 @@ import (
 	clilog "github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/text"
 	"github.com/urfave/cli"
+	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -38,6 +39,7 @@ func main() {
 	app.Usage = "downloads historic market data from IQFeed"
 	app.Version = "1.0.0"
 	app.HideVersion = true
+	app.ArgsUsage = "<symbols or symbols file>"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -72,17 +74,17 @@ func main() {
 	app.Commands = []cli.Command{
 		{
 			Name:   "eod",
-			Usage:  "download EOD bars",
+			Usage:  "Download EOD bars",
 			Action: runCommand,
 		},
 		{
 			Name:   "minute",
-			Usage:  "download minute bars",
+			Usage:  "Download minute bars",
 			Action: runCommand,
 		},
 		{
 			Name:   "tick",
-			Usage:  "download tick data",
+			Usage:  "Download tick data",
 			Action: runCommand,
 		},
 	}
@@ -97,16 +99,28 @@ func main() {
 }
 
 func showUsageWhenMissingCommand(c *cli.Context) error {
+	return showUsageWithError(c, "Command argument is missing")
+}
+
+func showUsageWithError(c *cli.Context, message string) error {
 	cli.ShowAppHelp(c)
 	fmt.Println("")
-	return cli.NewExitError("command argument is missing", 2)
+	return cli.NewExitError(fmt.Sprintf("ERROR: %s", message), 2)
 }
 
 func runCommand(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return showUsageWithError(c, "Comma separated symbols or symbols filename argument missing")
+	}
+
 	config.command = c.Command.Name
 	setupLogging(config)
 	createOutDirectory(config.outDirectory)
-	symbols := getSymbols()
+	symbols, err := getSymbols(c.Args()[0])
+	if err != nil {
+		return err
+	}
+
 	wg := start(symbols, &config)
 
 	wg.Wait()
@@ -129,10 +143,31 @@ func createOutDirectory(outDirectory string) {
 	}
 }
 
-func getSymbols() []string {
-	symbols := []string{"spy", "aapl", "ibm"}
-	log.WithFields(log.Fields{"symbols": len(symbols)}).Info("Read symbols")
-	return symbols
+func getSymbols(symbolsOrSymbolsFile string) ([]string, error) {
+	var symbols []string
+
+	if strings.Contains(symbolsOrSymbolsFile, ",") || !fileExists(symbolsOrSymbolsFile) {
+		symbols = strings.Split(symbolsOrSymbolsFile, ",")
+	} else {
+		content, err := ioutil.ReadFile(symbolsOrSymbolsFile)
+		if err != nil {
+			return nil, err
+		}
+		textContent := string(content)
+		symbols = strings.Split(string(textContent), "\n")
+	}
+
+	var sanitizedSymbols []string
+
+	for _, symbol := range symbols {
+		symbol = strings.Trim(symbol, " \r")
+		if symbol != "" {
+			sanitizedSymbols = append(sanitizedSymbols, symbol)
+		}
+	}
+
+	log.WithFields(log.Fields{"symbols": len(sanitizedSymbols)}).Info("Read symbols")
+	return sanitizedSymbols, nil
 }
 
 func start(symbols []string, config *Config) *sync.WaitGroup {
@@ -175,4 +210,9 @@ func downloader(symbolsQueue <-chan string, wg *sync.WaitGroup, config *Config, 
 	}
 
 	wg.Done()
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
