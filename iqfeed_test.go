@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -15,6 +16,8 @@ var (
 	testValidIqfeedTick              = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
 	testTooFewColumnsIqfeedTick      = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25"
 	testIncorrectRequestIdIqfeedTick = "111,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
+	testValidIqfeedEodBar            = "999,2019-02-21,24.0600,23.8038,23.8700,24.0000,29183,0,"
+	testTooFewColumnsIqfeedEodBar    = "999,2019-02-21,24.0600,23.8038,23.8700,24.0000,29183"
 )
 
 func TestMapRow(t *testing.T) {
@@ -88,6 +91,35 @@ func TestMapRow(t *testing.T) {
 
 		assert.Equal(t, "", mappedRow)
 		assert.Nil(t, err)
+	})
+}
+
+func TestEodBarMapper(t *testing.T) {
+	t.Run("valid eod bar", func(t *testing.T) {
+		columns := strings.Split(testValidIqfeedEodBar, ",")
+
+		mappedRow, err := mapEodBar(columns)
+
+		assert.Equal(t, "2019-02-21,23.8700,24.0600,23.8038,24.0000,29183,0", mappedRow)
+		assert.Nil(t, err)
+	})
+
+	t.Run("too few columns", func(t *testing.T) {
+		columns := strings.Split(testTooFewColumnsIqfeedEodBar, ",")
+
+		mappedRow, err := mapEodBar(columns)
+
+		assert.Equal(t, "", mappedRow)
+		assert.Errorf(t, err, "too few columns")
+	})
+
+	t.Run("no columns", func(t *testing.T) {
+		var columns []string
+
+		mappedRow, err := mapEodBar(columns)
+
+		assert.Equal(t, "", mappedRow)
+		assert.Errorf(t, err, "too few columns")
 	})
 }
 

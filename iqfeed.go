@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"encoding/csv"
 	"fmt"
-	"github.com/apex/log"
 	"io"
 	"net"
 	"os"
@@ -13,9 +12,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/apex/log"
 )
 
 type rowMapper func(iqfeedRow []string) (outputRow string, err error)
+type requestFactory func(symbol string, startDate string, endDate string, requestId string) string
 
 const (
 	errorMessage        = "E"
@@ -32,12 +34,17 @@ var (
 	previousRequestId int64 = 0
 )
 
-func DownloadTicks(symbol string, config *Config) {
-	header := "datetime,last,lastsize,totalsize,bid,ask,tickid,basis,market,cond"
-	download(symbol, mapTick, header, config)
+func DownloadEod(symbol string, config *Config) {
+	header := "date,open,high,low,close,volume,oi"
+	download(symbol, createEodRequest, mapEodBar, header, config)
 }
 
-func download(symbol string, rowMapper rowMapper, csvHeader string, config *Config) {
+func DownloadTicks(symbol string, config *Config) {
+	header := "datetime,last,lastsize,totalsize,bid,ask,tickid,basis,market,cond"
+	download(symbol, createTickRequest, mapTick, header, config)
+}
+
+func download(symbol string, createRequest requestFactory, rowMapper rowMapper, csvHeader string, config *Config) {
 	successful := false
 
 	// Setup log context
@@ -75,15 +82,8 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 
 	// Send request
 	requestId := fmt.Sprintf("%d", atomic.AddInt64(&previousRequestId, 1))
-
-	// Ticks
-	// HTT,[Symbol],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
-	request := fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
-
-	// Minute bars (with timestamp as bar end)
-	// HID,[Symbol],[Interval],[Days],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
-	// Minute data, data direction: Ascending, RequestID: #100
-	//request := fmt.Sprintf("HID,%s,,,,,,1,#%d", strings.ToUpper(symbol), requestId)
+	request := createRequest(symbol, config.startDate, config.endDate, requestId)
+	ctx.Debug(request)
 	_, err = fmt.Fprintf(conn, "%s\r\n", request)
 
 	if err != nil {
@@ -239,6 +239,48 @@ func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, tsv bool)
 	return outputRow, nil
 }
 
+func millisecondsTimestamp() int64 {
+	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
+// EOD
+
+func createEodRequest(symbol string, startDate string, endDate string, requestId string) string {
+	// HDT,[Symbol],[BeginDate],[EndDate],[MaxDatapoints],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
+	return fmt.Sprintf("HDT,%s,%s,%s,,1,%s", strings.ToUpper(symbol), startDate, endDate, requestId)
+}
+
+func mapEodBar(iqfeedRow []string) (outputRow string, err error) {
+	if len(iqfeedRow) < 8 {
+		return "", fmt.Errorf("too few columns")
+	}
+
+	// Columns from IQFeed (unorthodox ordering of OHLC with High first):
+	// 1          2     3    4     5      6       7
+	// timestamp, high, low, open, close, volume, openInterest
+
+	return fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s",
+			iqfeedRow[1],  // date
+			iqfeedRow[4],  // open
+			iqfeedRow[2],  // high
+			iqfeedRow[3],  // low
+			iqfeedRow[5],  // close
+			iqfeedRow[6],  // volume
+			iqfeedRow[7]), // open interest
+		nil
+}
+
+// Minute bars (with timestamp as bar end)
+// HID,[Symbol],[Interval],[Days],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
+// Minute data, data direction: Ascending, RequestID: #100
+
+// Ticks
+
+func createTickRequest(symbol string, startDate string, endDate string, requestId string) string {
+	// HTT,[Symbol],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
+	return fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), startDate, endDate, requestId)
+}
+
 func mapTick(iqfeedRow []string) (outputRow string, err error) {
 	if len(iqfeedRow) < 11 {
 		return "", fmt.Errorf("too few columns")
@@ -256,8 +298,4 @@ func mapTick(iqfeedRow []string) (outputRow string, err error) {
 			iqfeedRow[9],   // market
 			iqfeedRow[10]), // conditions
 		nil
-}
-
-func millisecondsTimestamp() int64 {
-	return time.Now().UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }

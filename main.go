@@ -3,14 +3,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/apex/log"
-	clilog "github.com/apex/log/handlers/cli"
-	"github.com/apex/log/handlers/text"
-	"github.com/urfave/cli"
 	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/apex/log"
+	clilog "github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/text"
+	"github.com/urfave/cli"
 )
 
 type Config struct {
@@ -210,6 +211,8 @@ func start(symbols []string, config *Config) *sync.WaitGroup {
 
 func getDownloadCommandFunction() DownloadFunc {
 	switch strings.ToLower(config.command) {
+	case "eod":
+		return DownloadEod
 	case "tick":
 		return DownloadTicks
 	}
