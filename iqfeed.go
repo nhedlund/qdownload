@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"github.com/apex/log"
 	"io"
@@ -143,7 +142,7 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 	// Process rows
 	rowCount := 0
 	for {
-		row, err := reader.Read()
+		iqfeedRow, err := reader.Read()
 
 		if err == io.EOF {
 			break
@@ -152,43 +151,22 @@ func download(symbol string, rowMapper rowMapper, csvHeader string, config *Conf
 			return
 		}
 
-		if config.verbose {
-			ctx.Debug(strings.Join(row, " "))
+		if config.detailedLogging {
+			ctx.Debug(strings.Join(iqfeedRow, ","))
 		}
 
-		if len(row) == 0 {
-			ctx.Error("Got empty row")
-			return
-		}
-		if row[0] == stateMessage {
-			continue
-		}
-		if len(row) >= 1 && row[0] != requestId {
-			ctx.Error("Got other requests data row")
-			return
-		}
-		if row[1] == endMessage {
+		mappedRow, err := mapRow(iqfeedRow, requestId, rowMapper, config.tsv)
+
+		if err == io.EOF {
 			break
-		}
-		if row[1] == errorMessage && len(row) >= 3 {
-			ctx.WithField("error", row[2]).Error("IQFeed returned error")
-			return
-		}
-
-		outputRow, err := rowMapper(row)
-
-		if err != nil && err.Error() == "too few columns" {
-			continue
 		} else if err != nil {
 			ctx.WithError(err).Error("Map row error")
 			return
+		} else if mappedRow == "" {
+			continue
 		}
 
-		if config.tsv {
-			outputRow = strings.Replace(outputRow, csvSeparator, tsvSeparator, -1)
-		}
-
-		_, err = fmt.Fprintln(writer, outputRow)
+		_, err = fmt.Fprintln(writer, mappedRow)
 
 		if err != nil {
 			ctx.WithError(err).Error("Write output row error")
@@ -229,9 +207,41 @@ func getFilename(symbol string, config *Config) string {
 	return filename
 }
 
+func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, tsv bool) (outputRow string, err error) {
+	if len(iqfeedRow) == 0 {
+		return "", fmt.Errorf("empty row")
+	}
+	if iqfeedRow[0] == stateMessage {
+		return "", nil
+	}
+	if iqfeedRow[0] != requestId {
+		return "", fmt.Errorf("incorrect request id")
+	}
+	if iqfeedRow[1] == endMessage {
+		return "", io.EOF
+	}
+	if iqfeedRow[1] == errorMessage && len(iqfeedRow) >= 3 {
+		return "", fmt.Errorf("iqfeed error: %s", iqfeedRow[2])
+	}
+
+	outputRow, err = rowMapper(iqfeedRow)
+
+	if err != nil && err.Error() == "too few columns" {
+		return "", nil
+	} else if err != nil {
+		return "", fmt.Errorf("map row error: %s", iqfeedRow[2])
+	}
+
+	if tsv {
+		outputRow = strings.Replace(outputRow, csvSeparator, tsvSeparator, -1)
+	}
+
+	return outputRow, nil
+}
+
 func tickMapper(iqfeedRow []string) (outputRow string, err error) {
 	if len(iqfeedRow) < 11 {
-		return "", errors.New(fmt.Sprintf("too few columns"))
+		return "", fmt.Errorf("too few columns")
 	}
 
 	return fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",

@@ -14,26 +14,26 @@ import (
 )
 
 type Config struct {
-	command      string
-	startDate    string
-	endDate      string
-	outDirectory string
-	parallelism  int
-	tsv          bool
-	verbose      bool
-	gzip         bool
+	command         string
+	startDate       string
+	endDate         string
+	outDirectory    string
+	parallelism     int
+	tsv             bool
+	detailedLogging bool
+	gzip            bool
 }
 
 var (
 	config = Config{
-		command:      "tick",
-		startDate:    "",
-		endDate:      "",
-		outDirectory: "data",
-		parallelism:  8,
-		tsv:          false,
-		verbose:      false,
-		gzip:         false,
+		command:         "tick",
+		startDate:       "",
+		endDate:         "",
+		outDirectory:    "data",
+		parallelism:     8,
+		tsv:             false,
+		detailedLogging: false,
+		gzip:            false,
 	}
 )
 
@@ -76,9 +76,9 @@ func main() {
 			Destination: &config.tsv,
 		},
 		cli.BoolFlag{
-			Name:        "verbose, l",
-			Usage:       "verbose logging",
-			Destination: &config.verbose,
+			Name:        "detailed-logging, d",
+			Usage:       "detailed log output",
+			Destination: &config.detailedLogging,
 		},
 		cli.BoolFlag{
 			Name:        "gzip, g",
@@ -144,7 +144,7 @@ func runCommand(c *cli.Context) error {
 }
 
 func setupLogging(config Config) {
-	if config.verbose {
+	if config.detailedLogging {
 		log.SetHandler(text.New(os.Stderr))
 		log.SetLevel(log.DebugLevel)
 	} else {
