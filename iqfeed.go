@@ -34,7 +34,7 @@ var (
 
 func DownloadTicks(symbol string, config *Config) {
 	header := "datetime,last,lastsize,totalsize,bid,ask,tickid,basis,market,cond"
-	download(symbol, tickMapper, header, config)
+	download(symbol, mapTick, header, config)
 }
 
 func download(symbol string, rowMapper rowMapper, csvHeader string, config *Config) {
@@ -239,7 +239,7 @@ func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, tsv bool)
 	return outputRow, nil
 }
 
-func tickMapper(iqfeedRow []string) (outputRow string, err error) {
+func mapTick(iqfeedRow []string) (outputRow string, err error) {
 	if len(iqfeedRow) < 11 {
 		return "", fmt.Errorf("too few columns")
 	}
