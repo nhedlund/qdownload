@@ -29,6 +29,7 @@ steps:
 
 - script: |
     go version
+    go get github.com/jstemmer/go-junit-report
     go get -v -t -d ./...
     if [ -f Gopkg.toml ]; then
         curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
@@ -39,6 +40,11 @@ steps:
   displayName: 'Get dependencies, then build'
 
 - script: |
-    go test -v
+    go test -v ./... | go-junit-report > report.xml
   workingDirectory: '$(modulePath)'
   displayName: 'Run tests'
+
+- task: PublishTestResults@2
+  inputs:
+    testRunner: JUnit
+    testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml

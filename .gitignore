@@ -17,6 +17,7 @@
 # Output files
 qdownload
 data
+report.xml
 *.gz
 *.csv
 *.tsv
