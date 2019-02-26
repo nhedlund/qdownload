@@ -213,6 +213,8 @@ func getDownloadCommandFunction() DownloadFunc {
 	switch strings.ToLower(config.command) {
 	case "eod":
 		return DownloadEod
+	case "minute":
+		return DownloadMinute
 	case "tick":
 		return DownloadTicks
 	}

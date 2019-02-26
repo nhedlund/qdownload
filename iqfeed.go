@@ -20,12 +20,13 @@ type rowMapper func(iqfeedRow []string) (outputRow string, err error)
 type requestFactory func(symbol string, startDate string, endDate string, requestId string) string
 
 const (
-	errorMessage        = "E"
-	stateMessage        = "S"
-	endMessage          = "!ENDMSG!"
-	csvSeparator string = ","
-	tsvSeparator string = "\t"
-	bufferSize          = 4 * 1024 * 1024
+	errorMessage          = "E"
+	stateMessage          = "S"
+	endMessage            = "!ENDMSG!"
+	intradayTimestampFormat = "2006-01-02 15:04:05"
+	csvSeparator          = ","
+	tsvSeparator          = "\t"
+	bufferSize            = 4 * 1024 * 1024
 )
 
 type DownloadFunc func(string, *Config)
@@ -37,6 +38,11 @@ var (
 func DownloadEod(symbol string, config *Config) {
 	header := "date,open,high,low,close,volume,oi"
 	download(symbol, createEodRequest, mapEodBar, header, config)
+}
+
+func DownloadMinute(symbol string, config *Config) {
+	header := "datetime,open,high,low,close,volume"
+	download(symbol, createMinuteRequest, mapMinuteBar, header, config)
 }
 
 func DownloadTicks(symbol string, config *Config) {
@@ -270,9 +276,41 @@ func mapEodBar(iqfeedRow []string) (outputRow string, err error) {
 		nil
 }
 
-// Minute bars (with timestamp as bar end)
-// HID,[Symbol],[Interval],[Days],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
-// Minute data, data direction: Ascending, RequestID: #100
+// Minute bars
+
+func createMinuteRequest(symbol string, startDate string, endDate string, requestId string) string {
+	// HIT,[Symbol],[Interval],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
+	return fmt.Sprintf("HIT,%s,60,%s,%s,,,,1,%s", strings.ToUpper(symbol), startDate, endDate, requestId)
+}
+
+func mapMinuteBar(iqfeedRow []string) (outputRow string, err error) {
+	if len(iqfeedRow) < 7 {
+		return "", fmt.Errorf("too few columns")
+	}
+
+	// NOTE: In version 5 of the IQFeed protocol minute bars are timestamped at the end of the bar
+	//       and have to be adjusted -1 minute to be at the start of the bar (same as EOD bars)
+	barEnd, err := time.Parse(intradayTimestampFormat, iqfeedRow[1])
+
+	if err != nil {
+		return "", fmt.Errorf("could not parse minute bar timestamp: %s", err)
+	}
+
+	barStart := barEnd.Add(-time.Minute * 1).Format(intradayTimestampFormat)
+
+	// Columns from IQFeed (unorthodox ordering of OHLC with High first):
+	// 1          2     3    4     5      6            7             8
+	// timestamp, high, low, open, close, totalVolume, periodVolume, numberOfTrades
+
+	return fmt.Sprintf("%s,%s,%s,%s,%s,%s",
+			barStart,      // datetime
+			iqfeedRow[4],  // open
+			iqfeedRow[2],  // high
+			iqfeedRow[3],  // low
+			iqfeedRow[5],  // close
+			iqfeedRow[7]), // volume
+		nil
+}
 
 // Ticks
 
