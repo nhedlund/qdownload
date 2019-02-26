@@ -15,6 +15,7 @@
 .idea
 
 # Output files
+qdownload
 data
 *.gz
 *.csv
