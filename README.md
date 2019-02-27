@@ -6,6 +6,8 @@ qdownload is a command line IQFeed CSV market data download tool that can downlo
 
 Use it to download a list of symbols, or a large number of symbols stored in a text file.
 
+<p align="center"><img src="/demo.gif?raw=true"/></p>
+
 ## Features
 
 * Daily bars
@@ -95,9 +97,3 @@ $ qdownload eod symbols.txt
    • Completed                 duration=608ms rows=5429 symbol=FARM
 
 ```
-
-## Demo
-
-<p align="center"><img src="/demo.gif?raw=true"/></p>
-
-
