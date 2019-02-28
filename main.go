@@ -27,7 +27,7 @@ type Config struct {
 
 var (
 	config = Config{
-		command:         "tick",
+		command:         "",
 		startDate:       "",
 		endDate:         "",
 		outDirectory:    "data",
