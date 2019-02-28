@@ -20,13 +20,13 @@ type rowMapper func(iqfeedRow []string) (outputRow string, err error)
 type requestFactory func(symbol string, startDate string, endDate string, requestId string) string
 
 const (
-	errorMessage          = "E"
-	stateMessage          = "S"
-	endMessage            = "!ENDMSG!"
+	errorMessage            = "E"
+	stateMessage            = "S"
+	endMessage              = "!ENDMSG!"
 	intradayTimestampFormat = "2006-01-02 15:04:05"
-	csvSeparator          = ","
-	tsvSeparator          = "\t"
-	bufferSize            = 4 * 1024 * 1024
+	csvSeparator            = ","
+	tsvSeparator            = "\t"
+	bufferSize              = 4 * 1024 * 1024
 )
 
 type DownloadFunc func(string, *Config)
@@ -100,7 +100,8 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 	ctx.Info("Downloading")
 
 	// Setup write pipeline
-	of, err := os.Create(path)
+	tmpPath := fmt.Sprintf("%s.tmp", path)
+	of, err := os.Create(tmpPath)
 
 	if err != nil {
 		ctx.WithError(err).Error("Could not create output file")
@@ -125,10 +126,17 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 			ctx.WithError(err).Error("Close output file error")
 		}
 
-		if !successful && fileExists(path) {
+		if successful {
+			err = os.Rename(tmpPath, path)
+			if err != nil {
+				ctx.WithError(err).Error("Rename temporary file to output file error")
+			}
+		}
+
+		if !successful && fileExists(tmpPath) {
 			err = os.Remove(path)
 			if err != nil {
-				ctx.WithError(err).Error("Delete unsuccessful download output file error")
+				ctx.WithError(err).Error("Delete temporary download output file error")
 			}
 		}
 	}()
