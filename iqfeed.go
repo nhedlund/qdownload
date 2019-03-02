@@ -134,7 +134,7 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 		}
 
 		if !successful && fileExists(tmpPath) {
-			err = os.Remove(path)
+			err = os.Remove(tmpPath)
 			if err != nil {
 				ctx.WithError(err).Error("Delete temporary download output file error")
 			}
