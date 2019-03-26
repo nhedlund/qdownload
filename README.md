@@ -27,10 +27,11 @@ Use it to download a list of symbols, or a large number of symbols stored in a t
 
 ## Installation
 
-Use go get to download and compile qdownload:
+Use go get and install to download and compile qdownload:
 
 ```bash
 go get -u github.com/nhedlund/qdownload
+go install github.com/nhedlund/qdownload
 ```
 
 ## Usage
