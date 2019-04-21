@@ -182,3 +182,27 @@ func TestTickMapper(t *testing.T) {
 		assert.Errorf(t, err, "too few columns")
 	})
 }
+
+func TestCreateEodRequest(t *testing.T) {
+	t.Run("eod request", func(t *testing.T) {
+		request := createEodRequest("spy", "20190122", "20190221", "R91")
+
+		assert.Equal(t, "HDT,SPY,20190122,20190221,,1,R91", request)
+	})
+}
+
+func TestCreateMinuteRequest(t *testing.T) {
+	t.Run("minute request", func(t *testing.T) {
+		request := createMinuteRequest("spy", "20190122", "20190221", "R91")
+
+		assert.Equal(t, "HIT,SPY,60,20190122,20190221,,,,1,R91", request)
+	})
+}
+
+func TestCreateTickRequest(t *testing.T) {
+	t.Run("tick request", func(t *testing.T) {
+		request := createTickRequest("spy", "20190122", "20190221", "R91")
+
+		assert.Equal(t, "HTT,SPY,20190122,20190221,,,,1,R91", request)
+	})
+}
