@@ -12,11 +12,13 @@ Use it to download a list of symbols, or a large number of symbols stored in a t
 
 * Daily bars
 * Minute bars
+* Interval bars (volume, ticks or seconds)
 * Tick data
 * Parallel downloads (8 by default)
 * CSV (default) or TSV format
 * Uncompressed (default) or GZipped files
 * Start and end date filter (all data by default)
+* Bars timestamps at start of bar (default), or end of bar
 
 ## Requirements
 
@@ -41,13 +43,14 @@ Run qdownload without any arguments for usage:
 ```bash
 $ qdownload
 USAGE:
-   qdownload [global options] command <symbols or symbols file>
+   qdownload [global options] command [command options] <symbols or symbols file>
 
 COMMANDS:
-     eod      Download EOD bars
-     minute   Download minute bars
-     tick     Download tick data
-     help, h  Shows a list of commands or help for one command
+     eod       Download EOD bars
+     minute    Download minute bars
+     tick      Download tick data
+     interval  Download interval bars: <length> <seconds|volume|ticks>
+     help, h   Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --start value, -s value        start date filter: yyyymmdd
@@ -57,6 +60,7 @@ GLOBAL OPTIONS:
    --tsv, -t                      use tab separator instead of comma
    --detailed-logging, -d         detailed log output
    --gzip, -g                     compress files with gzip
+   --end-timestamp, -m            use end of bar timestamps instead of start
    --help, -h                     show help
 ```
 
@@ -96,5 +100,24 @@ $ qdownload eod symbols.txt
    • Completed                 duration=876ms rows=5478 symbol=AMZN
    • Completed                 duration=604ms rows=3242 symbol=USO
    • Completed                 duration=608ms rows=5429 symbol=FARM
+```
 
+Download volume 1000 interval bars for SPY starting from 2019-04-18:
+
+```bash
+$ qdownload -s 20190418 interval 1000 volume spy
+   • Using newer protocol required for bar start timestamps, requiring at least IQFeed 6.0
+   • Read symbols              symbols=1
+   • Downloading               symbol=SPY
+   • Completed                 duration=1126ms rows=50104 symbol=SPY
+```
+
+Download volume 1000 interval bars for SPY with timestamp at end of bar,
+starting from 2019-04-18:
+
+```bash
+$ qdownload -m -s 20190418 interval 1000 volume spy
+   • Read symbols              symbols=1
+   • Downloading               symbol=SPY
+   • Completed                 duration=1120ms rows=50359 symbol=SPY
 ```
