@@ -19,6 +19,7 @@ Use it to download a list of symbols, or a large number of symbols stored in a t
 * Uncompressed (default) or GZipped files
 * Start and end date filter (all data by default)
 * Bars timestamps at start of bar (default), or end of bar
+* Optional time zone conversion of timestamps
 
 ## Requirements
 
@@ -56,6 +57,7 @@ GLOBAL OPTIONS:
    --start value, -s value        start date filter: yyyymmdd
    --end value, -e value          end date filter: yyyymmdd
    --out value, -o value          output directory (default: "data")
+   --timezone value, -z value     timestamps time zone (default: "ET")
    --parallelism value, -p value  number of parallel downloads (default: 8)
    --tsv, -t                      use tab separator instead of comma
    --detailed-logging, -d         detailed log output
@@ -121,3 +123,21 @@ $ qdownload -m -s 20190418 interval 1000 volume spy
    • Downloading               symbol=SPY
    • Completed                 duration=1120ms rows=50359 symbol=SPY
 ```
+
+### Timezone support
+
+By default intraday timestamps use the default IQFeed time zone US Eastern Time.
+
+However it is possible to output timestamps in a different timezone.
+
+Use the -z option to set the output timezone to either a shortcut alias or an IANA time zone from:
+[Time Zones](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+Examples:
+
+* ET or EST for US Eastern Time (New York)
+* CT or CST for US Central Time (Chicago)
+* PT or PST for US Pacific Time (Los Angeles)
+* UTC
+* America/New_York
+* Europe/Stockholm

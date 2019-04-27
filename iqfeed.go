@@ -1,6 +1,7 @@
 package main
 
 import (
+	"4d63.com/tz"
 	"bufio"
 	"compress/gzip"
 	"encoding/csv"
@@ -16,24 +17,36 @@ import (
 	"github.com/apex/log"
 )
 
-type rowMapper func(iqfeedRow []string, config *Config) (outputRow string, err error)
+type rowMapper func(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error)
 type requestFactory func(symbol string, requestId string, config *Config) string
 
 const (
-	errorMessage          = "E"
-	stateMessage          = "S"
-	endMessage            = "!ENDMSG!"
-	secondTimestampFormat = "2006-01-02 15:04:05"
-	csvSeparator          = ","
-	tsvSeparator          = "\t"
-	bufferSize            = 4 * 1024 * 1024
+	errorMessage               = "E"
+	stateMessage               = "S"
+	endMessage                 = "!ENDMSG!"
+	secondTimestampFormat      = "2006-01-02 15:04:05"
+	millisecondTimestampFormat = "2006-01-02 15:04:05.000"
+	csvSeparator               = ","
+	tsvSeparator               = "\t"
+	bufferSize                 = 4 * 1024 * 1024
 )
 
 type DownloadFunc func(string, *Config)
 
 var (
 	previousRequestId int64 = 0
+	sourceLocation    *time.Location
 )
+
+func init() {
+	location, err := tz.LoadLocation("America/New_York")
+
+	if err != nil {
+		log.Fatal("Could not load source time zone: America/New_York")
+	}
+
+	sourceLocation = location
+}
 
 func DownloadEod(symbol string, config *Config) {
 	header := "date,open,high,low,close,volume,oi"
@@ -62,6 +75,14 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 	ctx := log.WithFields(log.Fields{
 		"symbol": strings.ToUpper(symbol),
 	})
+
+	// Get target time zone
+	targetLocation, err := getTargetLocation(config.timeZone)
+
+	if err != nil {
+		ctx.WithError(err).Error("Could not load target time zone")
+		return
+	}
 
 	// Get output filename
 	filename := getFilename(symbol, config)
@@ -171,7 +192,7 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 			ctx.Debug(strings.Join(iqfeedRow, ","))
 		}
 
-		mappedRow, err := mapRow(iqfeedRow, requestId, rowMapper, config)
+		mappedRow, err := mapRow(iqfeedRow, requestId, rowMapper, targetLocation, config)
 
 		if err == io.EOF {
 			break
@@ -223,7 +244,26 @@ func getFilename(symbol string, config *Config) string {
 	return filename
 }
 
-func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, config *Config) (outputRow string, err error) {
+func getTargetLocation(timeZone string) (*time.Location, error) {
+	abbreviations := map[string]string{
+		"UTC": "UTC", // Handle lower case utc -> UTC
+		"":    "America/New_York",
+		"ET":  "America/New_York",
+		"EST": "America/New_York",
+		"CT":  "America/Chicago",
+		"CST": "America/Chicago",
+		"PT":  "America/Los_Angeles",
+		"PST": "America/Los_Angeles",
+	}
+
+	if timeZoneFromAbbreviation, found := abbreviations[strings.ToUpper(timeZone)]; found {
+		timeZone = timeZoneFromAbbreviation
+	}
+
+	return tz.LoadLocation(timeZone)
+}
+
+func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, targetLocation *time.Location, config *Config) (outputRow string, err error) {
 	if len(iqfeedRow) == 0 {
 		return "", fmt.Errorf("empty row")
 	}
@@ -240,7 +280,7 @@ func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, config *C
 		return "", fmt.Errorf("iqfeed error: %s", iqfeedRow[2])
 	}
 
-	outputRow, err = rowMapper(iqfeedRow, config)
+	outputRow, err = rowMapper(iqfeedRow, targetLocation, config)
 
 	if err != nil && err.Error() == "too few columns" {
 		return "", nil
@@ -266,7 +306,7 @@ func createEodRequest(symbol string, requestId string, config *Config) string {
 	return fmt.Sprintf("HDT,%s,%s,%s,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
 }
 
-func mapEodBar(iqfeedRow []string, config *Config) (outputRow string, err error) {
+func mapEodBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
 	if len(iqfeedRow) < 8 {
 		return "", fmt.Errorf("too few columns")
 	}
@@ -293,14 +333,14 @@ func createMinuteRequest(symbol string, requestId string, config *Config) string
 	return fmt.Sprintf("HIT,%s,60,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
 }
 
-func mapMinuteBar(iqfeedRow []string, config *Config) (outputRow string, err error) {
+func mapMinuteBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
 	if len(iqfeedRow) < 7 {
 		return "", fmt.Errorf("too few columns")
 	}
 
 	// NOTE: In version 5 of the IQFeed protocol minute bars are timestamped at the end of the bar
 	//       and have to be adjusted -1 minute to be at the start of the bar (same as EOD bars)
-	timestamp, err := time.Parse(secondTimestampFormat, iqfeedRow[1])
+	timestamp, err := time.ParseInLocation(secondTimestampFormat, iqfeedRow[1], sourceLocation)
 
 	if err != nil {
 		return "", fmt.Errorf("could not parse minute bar timestamp: %s", err)
@@ -309,6 +349,8 @@ func mapMinuteBar(iqfeedRow []string, config *Config) (outputRow string, err err
 	if !config.endTimestamp {
 		timestamp = timestamp.Add(-time.Minute * 1)
 	}
+
+	timestamp = timestamp.In(tz)
 
 	// Columns from IQFeed (unorthodox ordering of OHLC with High first):
 	// 1          2     3    4     5      6            7             8
@@ -339,28 +381,30 @@ func createIntervalRequest(symbol string, requestId string, config *Config) stri
 	return fmt.Sprintf("HIT,%s,%d,%s,%s,,,,1,%s,,%s%s", strings.ToUpper(symbol), config.intervalLength, config.startDate, config.endDate, requestId, config.intervalType, label)
 }
 
-func mapIntervalBar(iqfeedRow []string, config *Config) (outputRow string, err error) {
+func mapIntervalBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
 	if len(iqfeedRow) < 7 {
 		return "", fmt.Errorf("too few columns")
 	}
 
-	barTimestamp, err := time.Parse(secondTimestampFormat, iqfeedRow[1])
+	timestamp, err := time.ParseInLocation(secondTimestampFormat, iqfeedRow[1], sourceLocation)
 
 	if err != nil {
 		return "", fmt.Errorf("could not parse interval bar timestamp: %s", err)
 	}
+
+	timestamp = timestamp.In(tz)
 
 	// Columns from IQFeed (unorthodox ordering of OHLC with High first):
 	// 1          2     3    4     5      6            7             8
 	// timestamp, high, low, open, close, totalVolume, periodVolume, numberOfTrades
 
 	return fmt.Sprintf("%s,%s,%s,%s,%s,%s",
-			barTimestamp.Format(secondTimestampFormat), // datetime
-			iqfeedRow[4],  // open
-			iqfeedRow[2],  // high
-			iqfeedRow[3],  // low
-			iqfeedRow[5],  // close
-			iqfeedRow[7]), // volume
+			timestamp.Format(secondTimestampFormat), // datetime
+			iqfeedRow[4],                            // open
+			iqfeedRow[2],                            // high
+			iqfeedRow[3],                            // low
+			iqfeedRow[5],                            // close
+			iqfeedRow[7]),                           // volume
 		nil
 }
 
@@ -371,13 +415,21 @@ func createTickRequest(symbol string, requestId string, config *Config) string {
 	return fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
 }
 
-func mapTick(iqfeedRow []string, config *Config) (outputRow string, err error) {
+func mapTick(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
 	if len(iqfeedRow) < 11 {
 		return "", fmt.Errorf("too few columns")
 	}
 
+	timestamp, err := time.ParseInLocation(millisecondTimestampFormat, iqfeedRow[1], sourceLocation)
+
+	if err != nil {
+		return "", fmt.Errorf("could not parse interval bar timestamp: %s", err)
+	}
+
+	timestamp = timestamp.In(tz)
+
 	return fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
-			iqfeedRow[1],   // datetime
+			timestamp.Format(millisecondTimestampFormat), // datetime
 			iqfeedRow[2],   // last
 			iqfeedRow[3],   // last size
 			iqfeedRow[4],   // total size

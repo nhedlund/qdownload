@@ -3,16 +3,15 @@ package main
 
 import (
 	"fmt"
+	"github.com/apex/log"
+	clilog "github.com/apex/log/handlers/cli"
+	"github.com/apex/log/handlers/text"
+	"github.com/urfave/cli"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/apex/log"
-	clilog "github.com/apex/log/handlers/cli"
-	"github.com/apex/log/handlers/text"
-	"github.com/urfave/cli"
 )
 
 type Config struct {
@@ -21,6 +20,7 @@ type Config struct {
 	startDate       string
 	endDate         string
 	outDirectory    string
+	timeZone        string
 	intervalType    string
 	intervalLength  int
 	parallelism     int
@@ -40,6 +40,7 @@ var (
 		startDate:       "",
 		endDate:         "",
 		outDirectory:    "data",
+		timeZone:        "ET",
 		intervalType:    "",
 		intervalLength:  0,
 		parallelism:     8,
@@ -90,6 +91,12 @@ func main() {
 			Value:       "data",
 			Usage:       "output directory",
 			Destination: &config.outDirectory,
+		},
+		cli.StringFlag{
+			Name:        "timezone, z",
+			Value:       "ET",
+			Usage:       "timestamps time zone",
+			Destination: &config.timeZone,
 		},
 		cli.IntFlag{
 			Name:        "parallelism, p",
