@@ -6,7 +6,7 @@ import (
 	"github.com/apex/log"
 	clilog "github.com/apex/log/handlers/cli"
 	"github.com/apex/log/handlers/text"
-	"github.com/urfave/cli"
+	"gopkg.in/urfave/cli.v1"
 	"io/ioutil"
 	"os"
 	"strconv"
