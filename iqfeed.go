@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/apex/log"
@@ -34,7 +33,6 @@ const (
 type DownloadFunc func(string, *Config)
 
 var (
-	previousRequestId int64 = 0
 	sourceLocation    *time.Location
 )
 
@@ -106,15 +104,14 @@ func download(symbol string, createRequest requestFactory, rowMapper rowMapper, 
 
 	// Set protocol
 	_, err = fmt.Fprintf(conn, "S,SET PROTOCOL,%s\r\n", config.protocol)
-
 	if err != nil {
 		ctx.WithError(err).Error("Could not set protocol")
 		return
 	}
 
 	// Send request
-	requestId := fmt.Sprintf("%d", atomic.AddInt64(&previousRequestId, 1))
-	request := createRequest(symbol, requestId, config)
+	requestId := "LH"
+	request := createRequest(symbol, "", config)
 	ctx.Debug(request)
 	_, err = fmt.Fprintf(conn, "%s\r\n", request)
 
@@ -303,7 +300,7 @@ func millisecondsTimestamp() int64 {
 
 func createEodRequest(symbol string, requestId string, config *Config) string {
 	// HDT,[Symbol],[BeginDate],[EndDate],[MaxDatapoints],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
-	return fmt.Sprintf("HDT,%s,%s,%s,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
+	return fmt.Sprintf("HDT,%s,%s,%s,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, "")
 }
 
 func mapEodBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
@@ -330,7 +327,7 @@ func mapEodBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow
 
 func createMinuteRequest(symbol string, requestId string, config *Config) string {
 	// HIT,[Symbol],[Interval],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend],[IntervalType],[LabelAtBeginning]<CR><LF>
-	return fmt.Sprintf("HIT,%s,60,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
+	return fmt.Sprintf("HIT,%s,60,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, "")
 }
 
 func mapMinuteBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
@@ -378,7 +375,7 @@ func createIntervalRequest(symbol string, requestId string, config *Config) stri
 		label = ",1"
 	}
 
-	return fmt.Sprintf("HIT,%s,%d,%s,%s,,,,1,%s,,%s%s", strings.ToUpper(symbol), config.intervalLength, config.startDate, config.endDate, requestId, config.intervalType, label)
+	return fmt.Sprintf("HIT,%s,%d,%s,%s,,,,1,%s,,%s%s", strings.ToUpper(symbol), config.intervalLength, config.startDate, config.endDate, "", config.intervalType, label)
 }
 
 func mapIntervalBar(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
@@ -412,7 +409,7 @@ func mapIntervalBar(iqfeedRow []string, tz *time.Location, config *Config) (outp
 
 func createTickRequest(symbol string, requestId string, config *Config) string {
 	// HTT,[Symbol],[BeginDate BeginTime],[EndDate EndTime],[MaxDatapoints],[BeginFilterTime],[EndFilterTime],[DataDirection],[RequestID],[DatapointsPerSend]<CR><LF>
-	return fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, requestId)
+	return fmt.Sprintf("HTT,%s,%s,%s,,,,1,%s", strings.ToUpper(symbol), config.startDate, config.endDate, "")
 }
 
 func mapTick(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
