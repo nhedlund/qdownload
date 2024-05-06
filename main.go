@@ -178,11 +178,11 @@ func mapIntervalType(argument string, intervalType *string) error {
 	arg := strings.ToUpper(argument)
 
 	if strings.HasPrefix(arg, "S") {
-		*intervalType = "S"
+		*intervalType = "s"
 	} else if strings.HasPrefix(arg, "V") {
-		*intervalType = "V"
+		*intervalType = "v"
 	} else if strings.HasPrefix(arg, "T") {
-		*intervalType = "T"
+		*intervalType = "t"
 	} else {
 		return fmt.Errorf("incorrect interval type: %s", argument)
 	}
