@@ -224,6 +224,7 @@ func runCommand(c *cli.Context) error {
 		return err
 	}
 
+	log.Debug(fmt.Sprintf("config=%+v\n", config))
 	wg := start(symbols, &config)
 
 	wg.Wait()
