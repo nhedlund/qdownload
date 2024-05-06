@@ -32,10 +32,8 @@ type Config struct {
 }
 
 var (
-	newProtocol = "6.0"
-
 	config = Config{
-		protocol:        "5.1",
+		protocol:        "6.2",
 		command:         "",
 		startDate:       "",
 		endDate:         "",
@@ -160,13 +158,6 @@ func main() {
 					err = fmt.Errorf("incorrect interval length: %s", c.Args()[0])
 				} else {
 					err = mapIntervalType(config.intervalType, &config.intervalType)
-				}
-
-				if !config.endTimestamp {
-					log.Infof("Using newer protocol required for bar start timestamps, "+
-						"requiring at least IQFeed %s", newProtocol)
-					config.protocol = newProtocol
-					config.useLabels = true
 				}
 
 				return err
