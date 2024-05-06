@@ -25,6 +25,7 @@ const (
 	endMessage                 = "!ENDMSG!"
 	secondTimestampFormat      = "2006-01-02 15:04:05"
 	millisecondTimestampFormat = "2006-01-02 15:04:05.000"
+	microsecondTimestampFormat = "2006-01-02 15:04:05.000000"
 	csvSeparator               = ","
 	tsvSeparator               = "\t"
 	bufferSize                 = 4 * 1024 * 1024
@@ -57,7 +58,7 @@ func DownloadMinute(symbol string, config *Config) {
 }
 
 func DownloadTicks(symbol string, config *Config) {
-	header := "datetime,last,lastsize,totalsize,bid,ask,tickid,basis,market,cond"
+	header := "datetime,last,lastsize,totalsize,bid,ask,tickid,basis,market,cond,aggr,daycode"
 	download(symbol, createTickRequest, mapTick, header, config)
 }
 
@@ -282,7 +283,7 @@ func mapRow(iqfeedRow []string, requestId string, rowMapper rowMapper, targetLoc
 	if err != nil && err.Error() == "too few columns" {
 		return "", nil
 	} else if err != nil {
-		return "", fmt.Errorf("map row error: %s", iqfeedRow)
+		return "", fmt.Errorf("map row error(%s): %s", err.Error(), iqfeedRow)
 	}
 
 	if config.tsv {
@@ -413,11 +414,11 @@ func createTickRequest(symbol string, requestId string, config *Config) string {
 }
 
 func mapTick(iqfeedRow []string, tz *time.Location, config *Config) (outputRow string, err error) {
-	if len(iqfeedRow) < 11 {
+	if len(iqfeedRow) < 12 {
 		return "", fmt.Errorf("too few columns")
 	}
 
-	timestamp, err := time.ParseInLocation(millisecondTimestampFormat, iqfeedRow[1], sourceLocation)
+	timestamp, err := time.ParseInLocation(microsecondTimestampFormat, iqfeedRow[1], sourceLocation)
 
 	if err != nil {
 		return "", fmt.Errorf("could not parse interval bar timestamp: %s", err)
@@ -425,16 +426,19 @@ func mapTick(iqfeedRow []string, tz *time.Location, config *Config) (outputRow s
 
 	timestamp = timestamp.In(tz)
 
-	return fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
-			timestamp.Format(millisecondTimestampFormat), // datetime
+	return fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s",
+			timestamp.Format(microsecondTimestampFormat), // datetime
 			iqfeedRow[2],   // last
 			iqfeedRow[3],   // last size
-			iqfeedRow[4],   // total size
+			iqfeedRow[4],   // total volume
 			iqfeedRow[5],   // bid
 			iqfeedRow[6],   // ask
 			iqfeedRow[7],   // tick id
-			iqfeedRow[8],   // basis
-			iqfeedRow[9],   // market
-			iqfeedRow[10]), // conditions
+			iqfeedRow[8],   // basis for last
+			iqfeedRow[9],   // trade market center
+			iqfeedRow[10],  // trade conditions
+			iqfeedRow[11],  // trade aggressor
+			iqfeedRow[12],  // day code
+		),
 		nil
 }
