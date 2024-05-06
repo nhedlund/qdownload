@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -203,6 +204,17 @@ func showUsageWithError(c *cli.Context, message string) error {
 func runCommand(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return showUsageWithError(c, "Comma separated symbols or symbols filename argument missing")
+	}
+
+	if c.Command.Name == "eod" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102")
+	} else if c.Command.Name == "minute" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102 150405")
+	} else if c.Command.Name == "interval" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102 150405")
 	}
 
 	config.command = c.Command.Name
