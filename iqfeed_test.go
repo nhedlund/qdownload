@@ -20,7 +20,7 @@ var (
 	testTooFewColumnsIqfeedEodBar    = "999,2019-02-21,24.0600,23.8038,23.8700,24.0000,29183"
 	testValidIqfeedMinuteBar         = "999,2019-02-26 12:22:00,23.8000,23.8000,23.8000,23.8000,13578,100,0,"
 	testTooFewColumnsIqfeedMinuteBar = "999,2019-02-26 12:22:00,23.8000,23.8000,23.8000,23.8000"
-	testValidIqfeedTick              = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
+	testValidIqfeedTick              = "999,2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13"
 	testTooFewColumnsIqfeedTick      = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25"
 	testIncorrectRequestIdIqfeedTick = "111,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
 	et                               *time.Location
@@ -42,7 +42,7 @@ func TestMapRow(t *testing.T) {
 
 		mappedRow, err := mapRow(columns, testRequestId, mapTick, et, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -51,7 +51,7 @@ func TestMapRow(t *testing.T) {
 
 		mappedRow, err := mapRow(columns, testRequestId, mapTick, et, createConfig(0, "", false, true))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691\t23.8800\t12\t6714\t23.8700\t23.9700\t6\tO\t25\t3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000\t23.8800\t12\t6714\t23.8700\t23.9700\t6\tO\t25\t3D87\t0\t13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -244,7 +244,7 @@ func TestTickMapper(t *testing.T) {
 
 		mappedRow, err := mapTick(columns, et, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -254,7 +254,7 @@ func TestTickMapper(t *testing.T) {
 
 		mappedRow, err := mapTick(columns, cst, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 10:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 10:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
