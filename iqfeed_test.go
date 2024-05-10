@@ -281,7 +281,7 @@ func TestCreateEodRequest(t *testing.T) {
 	t.Run("eod request", func(t *testing.T) {
 		request := createEodRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HDT,SPY,20190122,20190221,,1,R91", request)
+		assert.Equal(t, "HDT,SPY,20190122,20190221,,1,", request)
 	})
 }
 
@@ -289,7 +289,7 @@ func TestCreateMinuteRequest(t *testing.T) {
 	t.Run("minute request", func(t *testing.T) {
 		request := createMinuteRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HIT,SPY,60,20190122,20190221,,,,1,R91", request)
+		assert.Equal(t, "HIT,SPY,60,20190122,20190221,,,,1,", request)
 	})
 }
 
@@ -297,12 +297,12 @@ func TestCreateIntervalRequest(t *testing.T) {
 	t.Run("interval request with bar start timestamp", func(t *testing.T) {
 		request := createIntervalRequest("spy", "R91", createConfig(5, "S", false, false))
 
-		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,R91,,S,1", request)
+		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,,,S,1", request)
 	})
 	t.Run("interval request with bar end timestamp", func(t *testing.T) {
 		request := createIntervalRequest("spy", "R91", createConfig(5, "S", true, false))
 
-		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,R91,,S", request)
+		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,,,S", request)
 	})
 }
 
@@ -310,7 +310,7 @@ func TestCreateTickRequest(t *testing.T) {
 	t.Run("tick request", func(t *testing.T) {
 		request := createTickRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HTT,SPY,20190122,20190221,,,,1,R91", request)
+		assert.Equal(t, "HTT,SPY,20190122,20190221,,,,1,", request)
 	})
 }
 
