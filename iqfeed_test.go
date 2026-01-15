@@ -20,7 +20,7 @@ var (
 	testTooFewColumnsIqfeedEodBar    = "999,2019-02-21,24.0600,23.8038,23.8700,24.0000,29183"
 	testValidIqfeedMinuteBar         = "999,2019-02-26 12:22:00,23.8000,23.8000,23.8000,23.8000,13578,100,0,"
 	testTooFewColumnsIqfeedMinuteBar = "999,2019-02-26 12:22:00,23.8000,23.8000,23.8000,23.8000"
-	testValidIqfeedTick              = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
+	testValidIqfeedTick              = "999,2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13"
 	testTooFewColumnsIqfeedTick      = "999,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25"
 	testIncorrectRequestIdIqfeedTick = "111,2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,"
 	et                               *time.Location
@@ -42,7 +42,7 @@ func TestMapRow(t *testing.T) {
 
 		mappedRow, err := mapRow(columns, testRequestId, mapTick, et, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -51,7 +51,7 @@ func TestMapRow(t *testing.T) {
 
 		mappedRow, err := mapRow(columns, testRequestId, mapTick, et, createConfig(0, "", false, true))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691\t23.8800\t12\t6714\t23.8700\t23.9700\t6\tO\t25\t3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000\t23.8800\t12\t6714\t23.8700\t23.9700\t6\tO\t25\t3D87\t0\t13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -244,7 +244,7 @@ func TestTickMapper(t *testing.T) {
 
 		mappedRow, err := mapTick(columns, et, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 11:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 11:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -254,7 +254,7 @@ func TestTickMapper(t *testing.T) {
 
 		mappedRow, err := mapTick(columns, cst, createConfig(0, "", false, false))
 
-		assert.Equal(t, "2019-02-25 10:30:06.691,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87", mappedRow)
+		assert.Equal(t, "2019-02-25 10:30:06.691000,23.8800,12,6714,23.8700,23.9700,6,O,25,3D87,0,13", mappedRow)
 		assert.Nil(t, err)
 	})
 
@@ -281,7 +281,7 @@ func TestCreateEodRequest(t *testing.T) {
 	t.Run("eod request", func(t *testing.T) {
 		request := createEodRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HDT,SPY,20190122,20190221,,1,R91", request)
+		assert.Equal(t, "HDT,SPY,20190122,20190221,,1,", request)
 	})
 }
 
@@ -289,7 +289,7 @@ func TestCreateMinuteRequest(t *testing.T) {
 	t.Run("minute request", func(t *testing.T) {
 		request := createMinuteRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HIT,SPY,60,20190122,20190221,,,,1,R91", request)
+		assert.Equal(t, "HIT,SPY,60,20190122,20190221,,,,1,", request)
 	})
 }
 
@@ -297,12 +297,12 @@ func TestCreateIntervalRequest(t *testing.T) {
 	t.Run("interval request with bar start timestamp", func(t *testing.T) {
 		request := createIntervalRequest("spy", "R91", createConfig(5, "S", false, false))
 
-		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,R91,,S,1", request)
+		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,,,S,1", request)
 	})
 	t.Run("interval request with bar end timestamp", func(t *testing.T) {
 		request := createIntervalRequest("spy", "R91", createConfig(5, "S", true, false))
 
-		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,R91,,S", request)
+		assert.Equal(t, "HIT,SPY,5,20190122,20190221,,,,1,,,S", request)
 	})
 }
 
@@ -310,7 +310,7 @@ func TestCreateTickRequest(t *testing.T) {
 	t.Run("tick request", func(t *testing.T) {
 		request := createTickRequest("spy", "R91", createConfig(0, "", false, false))
 
-		assert.Equal(t, "HTT,SPY,20190122,20190221,,,,1,R91", request)
+		assert.Equal(t, "HTT,SPY,20190122,20190221,,,,1,", request)
 	})
 }
 

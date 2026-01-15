@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -32,10 +33,8 @@ type Config struct {
 }
 
 var (
-	newProtocol = "6.0"
-
 	config = Config{
-		protocol:        "5.1",
+		protocol:        "6.2",
 		command:         "",
 		startDate:       "",
 		endDate:         "",
@@ -162,13 +161,6 @@ func main() {
 					err = mapIntervalType(config.intervalType, &config.intervalType)
 				}
 
-				if !config.endTimestamp {
-					log.Infof("Using newer protocol required for bar start timestamps, "+
-						"requiring at least IQFeed %s", newProtocol)
-					config.protocol = newProtocol
-					config.useLabels = true
-				}
-
 				return err
 			},
 		},
@@ -187,11 +179,11 @@ func mapIntervalType(argument string, intervalType *string) error {
 	arg := strings.ToUpper(argument)
 
 	if strings.HasPrefix(arg, "S") {
-		*intervalType = "S"
+		*intervalType = "s"
 	} else if strings.HasPrefix(arg, "V") {
-		*intervalType = "V"
+		*intervalType = "v"
 	} else if strings.HasPrefix(arg, "T") {
-		*intervalType = "T"
+		*intervalType = "t"
 	} else {
 		return fmt.Errorf("incorrect interval type: %s", argument)
 	}
@@ -214,6 +206,17 @@ func runCommand(c *cli.Context) error {
 		return showUsageWithError(c, "Comma separated symbols or symbols filename argument missing")
 	}
 
+	if c.Command.Name == "eod" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102")
+	} else if c.Command.Name == "minute" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102 150405")
+	} else if c.Command.Name == "interval" && config.startDate == "" && config.endDate == "" {
+		log.Debug("[start|enddate required] set enddate=tomorrow")
+		config.endDate = time.Now().Add(24 * time.Hour).Format("20060102 150405")
+	}
+
 	config.command = c.Command.Name
 	createOutDirectory(config.outDirectory)
 	symbols, err := getSymbols(c.Args()[len(c.Args())-1])
@@ -221,6 +224,7 @@ func runCommand(c *cli.Context) error {
 		return err
 	}
 
+	log.Debug(fmt.Sprintf("config=%+v\n", config))
 	wg := start(symbols, &config)
 
 	wg.Wait()
